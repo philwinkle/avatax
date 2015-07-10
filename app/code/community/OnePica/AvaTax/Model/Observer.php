@@ -395,18 +395,26 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
     }
 
     /**
-     * Stop order creation if tax estimation has problems
+     * Post dispatch checkout OnepageSaveBilling action event
      *
      * @param Varien_Event_Observer $observer
      * @return $this
-     * @throws OnePica_AvaTax_Model_Exception
      */
-    public function controllerActionPostdispatchCheckoutOnepageSaveShippingMethod(Varien_Event_Observer $observer) {
-        if ($this->_getDataHelper()->fullStopOnError($this->_getQuote())) {
-            Mage::app()
-                ->getResponse()
-                ->setBody($this->_getResponseErrorMessage());
-        }
+    public function controllerActionPostdispatchCheckoutOnepageSaveBilling(Varien_Event_Observer $observer)
+    {
+        $this->_stopOrderCreation();
+        return $this;
+    }
+
+    /**
+     * Post dispatch checkout OnepageSaveShipping action event
+     *
+     * @param Varien_Event_Observer $observer
+     * @return $this
+     */
+    public function controllerActionPostdispatchCheckoutOnepageSaveShipping(Varien_Event_Observer $observer)
+    {
+        $this->_stopOrderCreation();
         return $this;
     }
 
@@ -514,5 +522,20 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
                 'message' => $this->_getDataHelper()->getErrorMessage()
             )
         );
+    }
+
+    /**
+     * Stop order creation if tax estimation has problems
+     *
+     * @return $this
+     */
+    protected function _stopOrderCreation()
+    {
+        if ($this->_getDataHelper()->fullStopOnError($this->_getQuote())) {
+            Mage::app()
+                ->getResponse()
+                ->setBody($this->_getResponseErrorMessage());
+        }
+        return $this;
     }
 }

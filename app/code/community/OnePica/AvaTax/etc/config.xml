@@ -187,7 +187,7 @@
                         <method>controllerActionPredispatchCheckoutOnepageIndex</method>
                     </avatax>
                 </observers>
-            </controller_action_predispatch_checkout_onepage_index>            
+            </controller_action_predispatch_checkout_onepage_index>
             <controller_action_predispatch_checkout_cart_index>
                 <observers>
                     <avatax>
@@ -215,15 +215,24 @@
                     </avatax>
                 </observers>
             </controller_action_postdispatch_checkout_cart_estimateUpdatePost>
-            <controller_action_postdispatch_checkout_onepage_saveShippingMethod>
+            <controller_action_postdispatch_checkout_onepage_saveBilling>
                 <observers>
                     <avatax>
                         <type>singleton</type>
                         <class>avatax/observer</class>
-                        <method>controllerActionPostdispatchCheckoutOnepageSaveShippingMethod</method>
+                        <method>controllerActionPostdispatchCheckoutOnepageSaveBilling</method>
                     </avatax>
                 </observers>
-            </controller_action_postdispatch_checkout_onepage_saveShippingMethod>
+            </controller_action_postdispatch_checkout_onepage_saveBilling>
+            <controller_action_postdispatch_checkout_onepage_saveShipping>
+                <observers>
+                    <avatax>
+                        <type>singleton</type>
+                        <class>avatax/observer</class>
+                        <method>controllerActionPostdispatchCheckoutOnepageSaveShipping</method>
+                    </avatax>
+                </observers>
+            </controller_action_postdispatch_checkout_onepage_saveShipping>
             <sales_model_service_quote_submit_before>
                 <observers>
                     <avatax>
