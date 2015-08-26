@@ -34,7 +34,7 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     /**
      * The request data object
      *
-     * @var mixed
+     * @var GetTaxRequest
      */
     protected $_request = null;
 
@@ -63,6 +63,33 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
         $config = Mage::getSingleton('avatax/config');
         $this->_request->setCompanyCode($config->getCompanyCode($storeId));
         return $this;
+    }
+
+    /**
+     * Get gift wrapping tax class id
+     *
+     * @param Mage_Sales_Model_Order_Invoice|Mage_Sales_Model_Order_Creditmemo|Mage_Sales_Model_Quote_Address $object
+     * @return int
+     */
+    protected function _getGwTaxClassId($object)
+    {
+        if (Mage::getEdition() !== Mage::EDITION_ENTERPRISE) {
+            return 0;
+        }
+        if (!$object->getGwPrice()
+            && !$object->getGwItemsPrice()
+            && !$object->getGwPrintedCardPrice()
+        ) {
+            return 0;
+        }
+
+        if ($object instanceof Mage_Sales_Model_Quote_Address) {
+            $storeId = $object->getQuote()->getStoreId();
+        } else {
+            $storeId = $object->getStoreId();
+        }
+
+        return $this->_getGiftWrappingDataHelper()->getWrappingTaxClass($storeId);
     }
 
     /**
@@ -115,6 +142,7 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     {
         $storeId = $object->getStoreId();
         $this->_setCompanyCode($storeId);
+        $this->_request->setBusinessIdentificationNo($this->_getBusinessIdentificationNo($object));
         $this->_request->setDetailLevel(DetailLevel::$Document);
         $this->_request->setDocDate(date('Y-m-d'));
         $this->_request->setExemptionNo('');
@@ -128,6 +156,23 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
             $this->_request->setReferenceCode('Magento Order #' . $object->getIncrementId());
         }
         return $this;
+    }
+
+    /**
+     * Retrieve Business identification number
+     *
+     * @param Mage_Sales_Model_Order|OnePica_AvaTax_Model_Sales_Quote_Address $object
+     * @return string
+     */
+    protected function _getBusinessIdentificationNo($object)
+    {
+        if ($object instanceof Mage_Sales_Model_Order) {
+            return $object->getShippingAddress()->getVatId()
+                ?: $object->getBillingAddress()->getVatId();
+        }
+
+        return $object->getQuote()->getShippingAddress()->getVatId()
+            ?: $object->getQuote()->getBillingAddress()->getVatId();
     }
 
     /**
@@ -297,10 +342,11 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     /**
      * Init tax class collection for items to be calculated
      *
+     * @param Mage_Sales_Model_Order_Invoice|Mage_Sales_Model_Order_Creditmemo|Mage_Sales_Model_Quote_Address $object
      * @return $this
-     * @throws OnePica_AvaTax_Model_Exception
+     * @throws \OnePica_AvaTax_Model_Exception
      */
-    protected function _initTaxClassCollection()
+    protected function _initTaxClassCollection($object)
     {
         $taxClassIds = array();
         foreach ($this->_getProductCollection() as $product) {
@@ -308,9 +354,15 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
                 $taxClassIds[] = $product->getTaxClassId();
             }
         }
+        $gwTaxClassId = (int)$this->_getGwTaxClassId($object);
+
+        if (0 !== $gwTaxClassId) {
+            $taxClassIds[] = $gwTaxClassId;
+        }
         $this->_taxClassCollection = Mage::getModel('tax/class')->getCollection()
             ->addFieldToSelect(array('class_id', 'op_avatax_code'))
             ->addFieldToFilter('class_id', array('in' => $taxClassIds));
+
         return $this;
     }
 
@@ -523,5 +575,32 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     protected function _getDataHelper()
     {
         return Mage::helper('avatax');
+    }
+
+    /**
+     * Get gift tax class
+     *
+     * @return string
+     */
+    protected function _getGiftTaxClass()
+    {
+        $taxClass = '';
+        if ($this->_gwTaxClassId) {
+            $taxClass = $this->_getTaxClassCollection()
+                ->getItemById($this->_gwTaxClassId)
+                ->getOpAvataxCode();
+        }
+
+        return $taxClass;
+    }
+
+    /**
+     * Get gift wrapping data helper
+     *
+     * @return \Enterprise_GiftWrapping_Helper_Data
+     */
+    protected function _getGiftWrappingDataHelper()
+    {
+        return Mage::helper('enterprise_giftwrapping');
     }
 }

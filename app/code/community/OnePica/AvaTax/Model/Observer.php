@@ -92,20 +92,9 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
         /** @var Mage_Sales_Model_Order_Invoice $invoice */
         $invoice = $observer->getEvent()->getInvoice();
 
-        $existingInvoiceInQueue = Mage::getModel('avatax_records/queue')
-            ->loadInvoiceByIncrementId($invoice->getIncrementId());
-        if ($existingInvoiceInQueue->getId()) {
-            return $this;
-        }
-
-        /* do not post pending or cancelled invoices */
-        if ($invoice->getState() != Mage_Sales_Model_Order_Invoice::STATE_PAID) {
-            return $this;
-        }
-        /* if the previous state was unpaid, process now */
-        if (!$invoice->getOrigData($invoice->getIdFieldName()
-                && $invoice->getOrigData('state') != Mage_Sales_Model_Order_Invoice::STATE_OPEN)
-            && $this->_getDataHelper()->isObjectActionable($invoice)
+        if ((int)$invoice->getOrigData('state') !== Mage_Sales_Model_Order_Invoice::STATE_PAID
+            && (int)$invoice->getState() === Mage_Sales_Model_Order_Invoice::STATE_PAID
+            && Mage::helper('avatax')->isObjectActionable($invoice)
         ) {
             Mage::getModel('avatax_records/queue')
                 ->setEntity($invoice)
@@ -113,6 +102,7 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
                 ->setStatus(OnePica_AvaTax_Model_Records_Queue::QUEUE_STATUS_PENDING)
                 ->save();
         }
+
         return $this;
     }
 
@@ -242,6 +232,10 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
 
         if (!Mage::getResourceModel('cron/schedule_collection')->count()) {
             $warnings[] = $this->_getDataHelper()->__('It appears that Magento\'s cron scheduler is not running. For more information, see %s.', '<a href="http://www.magentocommerce.com/wiki/how_to_setup_a_cron_job" target="_black">How to Set Up a Cron Job</a>');
+        }
+
+        if ($this->_isRegionFilterAll() && $this->_canNotBeAddressValidated()) {
+            $warnings[] = Mage::helper('avatax')->__('Please be aware that address validation will not work for addresses outside United States and Canada');
         }
 
         if (count($errors) == 1) {
@@ -514,6 +508,30 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
                 'error'   => - 1,
                 'message' => $this->_getDataHelper()->getErrorMessage()
             )
+        );
+    }
+
+    /**
+     * Is region filter all mod
+     *
+     * @return bool
+     */
+    protected function _isRegionFilterAll()
+    {
+        return (int)$this->_getDataHelper()->getRegionFilterModByCurrentScope()
+               === OnePica_AvaTax_Model_Config::REGIONFILTER_ALL;
+    }
+
+    /**
+     * Can not be address validated
+     *
+     * @return array
+     */
+    protected function _canNotBeAddressValidated()
+    {
+        return (bool)array_diff(
+            $this->_getDataHelper()->getTaxableCountryByCurrentScope(),
+            $this->_getDataHelper()->getAddressValidationCountries()
         );
     }
 }

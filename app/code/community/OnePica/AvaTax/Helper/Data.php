@@ -25,9 +25,19 @@
 class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
 {
     /**
+     * Xml path to taxable_country config
+     */
+    const XML_PATH_TO_TAX_AVATAX_TAXABLE_COUNTRY = 'tax/avatax/taxable_country';
+
+    /**
+     * Xml path to region_filter_mode
+     */
+    const XML_PATH_TO_TAX_AVATAX_REGION_FILTER_MODE = 'tax/avatax/region_filter_mode';
+
+    /**
      * Identifier for error message
      */
-    const  CALCULATE_ERROR_MESSAGE_IDENTIFIER = 'avatax_calculate_error';
+    const CALCULATE_ERROR_MESSAGE_IDENTIFIER = 'avatax_calculate_error';
 
     /**
      * Identifier for validation notice
@@ -333,6 +343,16 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
+     * Get address validation countries
+     *
+     * @return array
+     */
+    public function getAddressValidationCountries()
+    {
+        return explode(',', $this->_getConfig('address_validation_countries'));
+    }
+
+    /**
      * Returns validate address config value
      *
      * @param @param null|bool|int|Mage_Core_Model_Store $store
@@ -406,22 +426,21 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Does any store have this extension disabled?
+     * Is AvaTax disabled.
      *
      * @return bool
+     * @throws \Mage_Core_Exception
      */
-    public function isAnyStoreDisabled()
+    public function isAvaTaxDisabled()
     {
-        $disabled = false;
-        $storeCollection = Mage::app()->getStores();
+        $websiteId = Mage::app()->getRequest()->get('website');
+        $storeId = Mage::app()->getRequest()->get('store');
 
-        foreach ($storeCollection as $store) {
-            //@startSkipCommitHooks
-            $disabled |= Mage::getStoreConfig('tax/avatax/action', $store->getId()) == OnePica_AvaTax_Model_Config::ACTION_DISABLE;
-            //@finishSkipCommitHooks
+        if ($websiteId && !$storeId) {
+            return !(bool)Mage::app()->getWebsite($websiteId)->getConfig('tax/avatax/action');
         }
 
-        return $disabled;
+        return !(bool)Mage::getStoreConfig('tax/avatax/action', $storeId);
     }
 
     /**
@@ -433,7 +452,7 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function isAddressValidationOn($address, $storeId)
     {
-        if (!$this->isAddressActionable($address, $storeId)) {
+        if (!$this->isAddressActionable($address, $storeId, OnePica_AvaTax_Model_Config::REGIONFILTER_ALL, true)) {
             return false;
         }
         return $this->getValidateAddress($storeId);
@@ -448,7 +467,7 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function isAddressNormalizationOn($address, $storeId)
     {
-        if (!$this->isAddressActionable($address, $storeId)) {
+        if (!$this->isAddressActionable($address, $storeId, OnePica_AvaTax_Model_Config::REGIONFILTER_ALL, true)) {
             return false;
         }
         return Mage::getStoreConfig('tax/avatax/normalize_address', $storeId);
@@ -457,28 +476,38 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
     /**
      * Determines if the address should be filtered
      *
-     * @param Mage_Customer_Model_Address
-     * @param int $storeId
-     * @param int $filterMode
+     * @param Mage_Customer_Model_Address $address
+     * @param int                         $storeId
+     * @param int                         $filterMode
+     * @param bool                        $isAddressValidation
      * @return bool
      */
-    public function isAddressActionable($address, $storeId, $filterMode = OnePica_AvaTax_Model_Config::REGIONFILTER_ALL)
-    {
+    public function isAddressActionable($address, $storeId, $filterMode = OnePica_AvaTax_Model_Config::REGIONFILTER_ALL,
+        $isAddressValidation = false
+    ) {
         $filter = false;
 
         if (Mage::getStoreConfig('tax/avatax/action', $storeId) == OnePica_AvaTax_Model_Config::ACTION_DISABLE) {
             return false;
         }
 
-        if (Mage::getStoreConfig('tax/avatax/region_filter_mode', $storeId) >= $filterMode) {
-            $regionFilters = explode(',', Mage::getStoreConfig('tax/avatax/region_filter_list', $storeId));
-            if (!in_array($address->getRegionId(), $regionFilters)) {
-                $filter = 'region';
-            }
+        if ($this->getRegionFilterModByStore($storeId) >= $filterMode) {
+            $filter = $this->_getFilterRegion($address, $storeId);
         }
 
-        $countryFilters = explode(',', Mage::getStoreConfig('tax/avatax/country_filter_list', $storeId));
-        if (!in_array($address->getCountryId(), $countryFilters)) {
+        if ($isAddressValidation && $filter
+            && ((int)$this->getRegionFilterModByStore($storeId) !== OnePica_AvaTax_Model_Config::REGIONFILTER_ALL)
+        ) {
+            $filter = false;
+        }
+
+        if (!in_array($address->getCountryId(), $this->getTaxableCountryByStore($storeId))) {
+            $filter = 'country';
+        }
+
+        if ($isAddressValidation && !$filter
+            && !in_array($address->getCountryId(), $this->getAddressValidationCountries($storeId))
+        ) {
             $filter = 'country';
         }
 
@@ -507,6 +536,108 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
         }
 
         return $filter ? false : true;
+    }
+
+    /**
+     * Get region filter
+     *
+     * @param Mage_Customer_Model_Address $address
+     * @param int                         $storeId
+     * @return string|bool
+     */
+    protected function _getFilterRegion($address, $storeId)
+    {
+        $filter = false;
+        $regionFilters = explode(',', Mage::getStoreConfig('tax/avatax/region_filter_list', $storeId));
+        $entityId = $address->getRegionId() ?: $address->getCountryId();
+        if (!in_array($entityId, $regionFilters)) {
+            $filter = 'region';
+        }
+        return $filter;
+    }
+
+    /**
+     * Get taxable country by store
+     *
+     * @param int $storeId
+     * @return array
+     */
+    public function getTaxableCountryByStore($storeId = null)
+    {
+        return explode(',', Mage::getStoreConfig(self::XML_PATH_TO_TAX_AVATAX_TAXABLE_COUNTRY, $storeId));
+    }
+
+    /**
+     * Get taxable country by website
+     *
+     * @param int $websiteId
+     * @return array
+     */
+    public function getTaxableCountryByWebSite($websiteId)
+    {
+        return explode(',', Mage::app()
+            ->getWebsite($websiteId)
+            ->getConfig(self::XML_PATH_TO_TAX_AVATAX_TAXABLE_COUNTRY)
+        );
+    }
+
+    /**
+     * Get taxable country by current scope
+     *
+     * Used in admin panel
+     *
+     * @return array
+     */
+    public function getTaxableCountryByCurrentScope()
+    {
+        $websiteId = Mage::app()->getRequest()->get('website');
+        $storeId = Mage::app()->getRequest()->get('store');
+        if ($websiteId && !$storeId) {
+            return $this->getTaxableCountryByWebSite($websiteId);
+        }
+        return $this->getTaxableCountryByStore($storeId);
+    }
+
+    /**
+     * Get region filter mod by store
+     *
+     * @param null|int $storeId
+     * @return int
+     * @internal param int $store
+     */
+    public function getRegionFilterModByStore($storeId = null)
+    {
+        return Mage::getStoreConfig(self::XML_PATH_TO_TAX_AVATAX_REGION_FILTER_MODE, $storeId);
+    }
+
+    /**
+     * Get region filter mod by website
+     *
+     * @param int $websiteId
+     * @return int
+     * @throws \Mage_Core_Exception
+     */
+    public function getRegionFilterModByWebsite($websiteId)
+    {
+        return Mage::app()->getWebsite($websiteId)->getConfig(self::XML_PATH_TO_TAX_AVATAX_REGION_FILTER_MODE);
+    }
+
+    /**
+     * Get region filter mode by current scope
+     *
+     * @throws \Mage_Core_Exception
+     * @return int
+     */
+    public function getRegionFilterModByCurrentScope()
+    {
+        $websiteId = Mage::app()->getRequest()->get('website');
+        $storeId = Mage::app()->getRequest()->get('store');
+
+        if ($websiteId && !$storeId) {
+            return $this->getRegionFilterModByWebsite($websiteId);
+        }
+
+        return $this->getRegionFilterModByStore($storeId);
     }
 
     /**
