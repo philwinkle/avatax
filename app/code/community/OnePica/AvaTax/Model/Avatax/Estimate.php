@@ -80,7 +80,7 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
         $rates = Mage::getSingleton('avatax/session')->getRates();
         if (is_array($rates)) {
             foreach ($rates as $key => $rate) {
-                if ($rate['timestamp'] < strtotime('-' . self::CACHE_TTL . ' minutes')) {
+                if ($rate['timestamp'] < $this->_getDateModel()->timestamp('-' . self::CACHE_TTL . ' minutes')) {
                     unset($rates[$key]);
                 }
             }
@@ -197,7 +197,6 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
         $this->_setOriginAddress($address->getStoreId());
         $this->_setDestinationAddress($address);
         $this->_request->setDetailLevel(DetailLevel::$Line);
-        $this->_addCustomer($address);
         $this->_addItemsInCart($item);
         $this->_addShipping($address);
         //Added code for calculating tax for giftwrap items
@@ -221,7 +220,7 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
             /** @var GetTaxResult $result */
             if ($result->getResultCode() == SeverityLevel::$Success) {
                 $this->_rates[$requestKey] = array(
-                    'timestamp' => time(),
+                    'timestamp' => $this->_getDateModel()->timestamp(),
                     'address_id' => $address->getId(),
                     'summary' => array(),
                     'items' => array()
@@ -247,7 +246,7 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
             //failure
             } else {
                 $this->_rates[$requestKey] = array(
-                    'timestamp'  => time(),
+                    'timestamp'  => $this->_getDateModel()->timestamp(),
                     'address_id' => $address->getId(),
                     'summary'    => array(),
                     'items'      => array(),
@@ -352,7 +351,7 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
             return false;
         }
         $lineNumber = count($this->_lines);
-        $storeId = $item->getAddress()->getQuote()->getStore()->getId();
+        $storeId = $item->getQuote()->getStoreId();
         //Add gift wrapping price(for individual items)
         $gwItemsAmount = $item->getGwBasePrice();
 
@@ -453,19 +452,19 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
         $lineNumber = count($this->_lines);
         $line = new Line();
         $line->setNo($lineNumber);
-        $line->setItemCode($this->_getItemCode($product));
-        $line->setDescription($product->getName());
+        $line->setItemCode($this->_getItemCode($item));
+        $line->setDescription($item->getName());
         $line->setQty($item->getQty());
         $line->setAmount($price);
         $line->setDiscounted($item->getDiscountAmount() ? true : false);
         if ($taxClass) {
             $line->setTaxCode($taxClass);
         }
-        $ref1Value = $this->_getRefValueByProductAndNumber($product, 1);
+        $ref1Value = $this->_getRefValueByProductAndNumber($product, 1, $item->getStoreId());
         if ($ref1Value) {
             $line->setRef1($ref1Value);
         }
-        $ref2Value = $this->_getRefValueByProductAndNumber($product, 2);
+        $ref2Value = $this->_getRefValueByProductAndNumber($product, 2, $item->getStoreId());
         if ($ref2Value) {
             $line->setRef2($ref2Value);
         }
@@ -478,14 +477,15 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
     /**
      * Get item code
      *
-     * @param Mage_Catalog_Model_Product $product
+     * @param Mage_Sales_Model_Quote_Item $item
      * @return string
      */
-    protected function _getItemCode($product)
+    protected function _getItemCode($item)
     {
+        $product = $this->_getProductByProductId($item->getProductId());
         $itemCode = $this->_getUpcCode($product);
         if (empty($itemCode)) {
-            $itemCode = $product->getSku();
+            $itemCode = $item->getSku();
         }
         return substr($itemCode, 0, 50);
     }
