@@ -73,21 +73,8 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function loadClass($className)
     {
-        require_once $this->getLibPath() . DS . 'classes' . DS . $className . '.class.php';
-        return $this;
-    }
-
-    /**
-     * Loads an array of AvaTax classes.
-     *
-     * @param array $classes
-     * @return OnePica_AvaTax_Helper_Data
-     */
-    public function loadClasses(array $classes)
-    {
-        foreach ($classes as $class) {
-            $this->loadClass($class);
-        }
+        $classFile = $this->getLibPath() . DS . 'classes' . DS . $className . '.class.php';
+        require_once $classFile;
         return $this;
     }
 
@@ -98,7 +85,8 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function loadFunctions()
     {
-        require_once $this->getLibPath() . DS . 'functions.php';
+        $functionsFile = $this->getLibPath() . DS . 'functions.php';
+        require_once $functionsFile;
         return $this;
     }
 
@@ -117,19 +105,9 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
      *
      * @return string
      */
-    public function getLibPath ()
+    public function getLibPath()
     {
-        return Mage::getModuleDir('', 'OnePica_AvaTax') . DS . 'lib';
-    }
-
-    /**
-     * Returns the path to the AvaTax SDK WSDL directory.
-     *
-     * @return string
-     */
-    public function getWsdlPath ()
-    {
-        return $this->getLibPath() . DS . 'wsdl';
+        return Mage::getBaseDir('lib') . DS . 'AvaTax';
     }
 
     /**
@@ -429,7 +407,7 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
      * Is AvaTax disabled.
      *
      * @return bool
-     * @throws \Mage_Core_Exception
+     * @throws Mage_Core_Exception
      */
     public function isAvaTaxDisabled()
     {
@@ -441,6 +419,24 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
         }
 
         return !(bool)Mage::getStoreConfig('tax/avatax/action', $storeId);
+    }
+
+    /**
+     * Does any store have this extension disabled?
+     *
+     * @return bool
+     */
+    public function isAnyStoreDisabled()
+    {
+        $disabled = false;
+        $storeCollection = Mage::app()->getStores();
+
+        foreach ($storeCollection as $store) {
+            $disabled |= Mage::getStoreConfig('tax/avatax/action', $store->getId())
+                == OnePica_AvaTax_Model_Config::ACTION_DISABLE;
+        }
+
+        return $disabled;
     }
 
     /**
@@ -701,5 +697,19 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
             OnePica_AvaTax_Model_Source_Logtype::QUEUE    => OnePica_AvaTax_Model_Source_Logtype::QUEUE,
             OnePica_AvaTax_Model_Source_Logtype::VALIDATE => OnePica_AvaTax_Model_Source_Logtype::VALIDATE,
         );
+    }
+
+    /**
+     * Round up
+     *
+     * @param float $value
+     * @param int   $precision
+     * @return float
+     */
+    public function roundUp($value, $precision)
+    {
+        $fact = pow(10, $precision);
+
+        return ceil($fact * $value) / $fact;
     }
 }
