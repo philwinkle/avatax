@@ -465,12 +465,12 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
     /**
      * Get item code
      *
-     * @param Mage_Catalog_Model_Product                                                 $product
      * @param Mage_Sales_Model_Order_Invoice_Item|Mage_Sales_Model_Order_Creditmemo_Item $item
      * @return string
      */
-    protected function _getItemCode($product, $item)
+    protected function _getItemCode($item)
     {
+        $product = $this->_getProductByProductId($item->getProductId());
         $itemCode = $this->_getUpcCode($product);
         if (empty($itemCode)) {
             $itemCode = $item->getSku();
