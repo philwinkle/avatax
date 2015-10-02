@@ -441,7 +441,7 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
 
         $line = new Line();
         $line->setNo(count($this->_lines));
-        $line->setItemCode($this->_getItemCode($product, $item));
+        $line->setItemCode($this->_getItemCode($item));
         $line->setDescription($item->getName());
         $line->setQty($item->getQty());
         $line->setAmount($price);
