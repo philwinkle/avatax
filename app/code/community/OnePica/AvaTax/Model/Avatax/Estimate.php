@@ -450,8 +450,7 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
         $lineNumber = count($this->_lines);
         $line = new Line();
         $line->setNo($lineNumber);
-        //todo get item code from $item instead $product
-        $line->setItemCode($this->_getItemCode($product));
+        $line->setItemCode($this->_getItemCode($product, $item));
         $line->setDescription($item->getName());
         $line->setQty($item->getQty());
         $line->setAmount($price);
@@ -477,14 +476,15 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
     /**
      * Get item code
      *
-     * @param Mage_Catalog_Model_Product $product
+     * @param Mage_Catalog_Model_Product  $product
+     * @param Mage_Sales_Model_Quote_Item $item
      * @return string
      */
-    protected function _getItemCode($product)
+    protected function _getItemCode($product, $item)
     {
         $itemCode = $this->_getUpcCode($product);
         if (empty($itemCode)) {
-            $itemCode = $product->getSku();
+            $itemCode = $item->getSku();
         }
         return substr($itemCode, 0, 50);
     }
