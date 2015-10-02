@@ -340,10 +340,10 @@ class OnePica_AvaTax_Model_Avatax_Address extends OnePica_AvaTax_Model_Abstract
     /**
      * Address normalization
      *
-     * @param $isAddressNormalizationOn
+     * @param bool $isAddressNormalizationOn
      * @param ValidateResult $result
      * @return $this
-     * @throws \OnePica_AvaTax_Model_Avatax_Address_Exception
+     * @throws \OnePica_AvaTax_Model_Avatax_Exception_Address
      */
     protected function _addressNormalization($isAddressNormalizationOn, $result)
     {

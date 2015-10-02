@@ -250,11 +250,7 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
             //failure
             } else {
                 $this->_rates[$requestKey]['failure'] = true;
-                if (Mage::helper('avatax')->fullStopOnError($address->getStoreId())) {
-                    $address->getQuote()->setHasError(true);
-                }
-                //todo merging conflict
-                //self::$_hasError = true;
+                self::$_hasError = true;
             }
 
             Mage::getSingleton('avatax/session')->setRates($this->_rates);

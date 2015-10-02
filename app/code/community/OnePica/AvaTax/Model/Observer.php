@@ -233,7 +233,7 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
     {
         if (in_array($class, self::$_classes)) {
             /** @var OnePica_AvaTax_Helper_Data $helper */
-            $helper = $this->_getDataHelper();
+            $helper = Mage::helper('avatax');
             $helper->loadFunctions();
             $helper->loadClass($class);
         }
@@ -313,8 +313,6 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
         $errors = array_merge(
             $errors,
             $this->_sendPing($storeId),
-            $this->_checkConnectionFields($storeId),
-            $this->_checkSkuFields($storeId),
             $this->_checkSoapSupport(),
             $this->_checkSslSupport()
         );
@@ -389,58 +387,6 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
         $ping = Mage::getSingleton('avatax/avatax_ping')->ping($storeId);
         if ($ping !== true) {
             $errors[] = $ping;
-        }
-
-        return $errors;
-    }
-
-    /**
-     * Check connection fields
-     *
-     * @param int $storeId
-     * @return array
-     */
-    protected function _checkConnectionFields($storeId)
-    {
-        $errors = array();
-        if (!Mage::getStoreConfig('tax/avatax/url', $storeId)) {
-            $errors[] = $this->_getDataHelper()->__('You must enter a connection URL');
-        }
-        if (!Mage::getStoreConfig('tax/avatax/account', $storeId)) {
-            $errors[] = $this->_getDataHelper()->__('You must enter an account number');
-        }
-        if (!Mage::getStoreConfig('tax/avatax/license', $storeId)) {
-            $errors[] = $this->_getDataHelper()->__('You must enter a license key');
-        }
-        if (!is_numeric(Mage::getStoreConfig('tax/avatax/log_lifetime'))) {
-            $errors[] = $this->_getDataHelper()->__('You must enter the number of days to keep log entries');
-        }
-        if (!Mage::getStoreConfig('tax/avatax/company_code', $storeId)) {
-            $errors[] = $this->_getDataHelper()->__('You must enter a company code');
-        }
-
-        return $errors;
-    }
-
-    /**
-     * Check Sku fields
-     *
-     * @param int $storeId
-     * @return array
-     */
-    protected function _checkSkuFields($storeId)
-    {
-        $errors = array();
-        if (!Mage::getStoreConfig('tax/avatax/shipping_sku', $storeId)) {
-            $errors[] = $this->_getDataHelper()->__('You must enter a shipping sku');
-        }
-        if (!Mage::getStoreConfig('tax/avatax/adjustment_positive_sku', $storeId)) {
-            $errors[] = $this->_getDataHelper()->__('You must enter an adjustment refund sku');
-        }
-        if (!Mage::getStoreConfig('tax/avatax/adjustment_negative_sku', $storeId)) {
-            $errors[] = $this->_getDataHelper()->__('You must enter an adjustment fee sku');
-
-            return $errors;
         }
 
         return $errors;
@@ -542,7 +488,7 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
      *
      * @param Varien_Event_Observer $observer
      * @return $this
-     * @throws OnePica_AvaTax_Model_Exception
+     * @throws OnePica_AvaTax_Exception
      */
     public function salesModelServiceQuoteSubmitBefore(Varien_Event_Observer $observer)
     {
@@ -557,7 +503,6 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
      *
      * @param Varien_Event_Observer $observer
      * @return $this
-     * @throws OnePica_AvaTax_Model_Exception
      */
     public function controllerActionPostdispatchCheckoutOnepageSaveShippingMethod(Varien_Event_Observer $observer) {
         if ($this->_getDataHelper()->fullStopOnError($this->_getQuote())) {
@@ -573,7 +518,7 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
      *
      * @param Varien_Event_Observer $observer
      * @return $this
-     * @throws OnePica_AvaTax_Model_Exception
+     * @throws OnePica_AvaTax_Exception
      */
     public function checkoutTypeMultishippingCreateOrdersSingle(Varien_Event_Observer $observer)
     {
@@ -589,7 +534,7 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
      *
      * @param Mage_Sales_Model_Quote $quote
      * @return $this
-     * @throws OnePica_AvaTax_Model_Exception
+     * @throws OnePica_AvaTax_Exception
      */
     protected function _handleTaxEstimationOnOrderPlace($quote)
     {
@@ -597,7 +542,7 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
         $helper = $this->_getDataHelper();
         $helper->removeErrorMessage();
         if ($helper->fullStopOnError($quote)) {
-            throw new OnePica_AvaTax_Model_Exception($helper->getErrorMessage());
+            throw new OnePica_AvaTax_Exception($helper->getErrorMessage());
         }
         return $this;
     }
