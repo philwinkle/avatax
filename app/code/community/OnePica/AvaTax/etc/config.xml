@@ -194,6 +194,18 @@
                 </observers>
             </controller_action_predispatch_checkout_onepage_index>
         </events>
+        <fieldsets>
+            <sales_convert_quote_item>
+                <avatax_data>
+                    <to_order_item>*</to_order_item>
+                </avatax_data>
+            </sales_convert_quote_item>
+            <sales_convert_order_item>
+                <avatax_data>
+                    <to_quote_item>*</to_quote_item>
+                </avatax_data>
+            </sales_convert_order_item>
+        </fieldsets>
     </global>
     <frontend>
         <layout>
