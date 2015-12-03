@@ -193,6 +193,15 @@
                     </avatax>
                 </observers>
             </controller_action_predispatch_checkout_onepage_index>
+            <sales_quote_item_set_product>
+                <observers>
+                    <avatax>
+                        <type>singleton</type>
+                        <class>avatax/observer</class>
+                        <method>salesQuoteItemSetProduct</method>
+                    </avatax>
+                </observers>
+            </sales_quote_item_set_product>
         </events>
         <fieldsets>
             <sales_convert_quote_item>

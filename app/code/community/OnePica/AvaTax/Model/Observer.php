@@ -67,6 +67,15 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
     );
 
     /**
+     * Processing sales_quote_item_set_product event
+     *
+     * @param Varien_Event_Observer $observer
+     */
+    public function salesQuoteItemSetProduct(Varien_Event_Observer $observer)
+    {
+    }
+
+    /**
      * Sets the collectTotals tax node based on the extensions enabled/disabled status
      *
      * @param Varien_Event_Observer $observer
