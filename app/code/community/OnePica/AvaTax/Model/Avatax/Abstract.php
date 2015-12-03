@@ -39,18 +39,18 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     protected $_request = null;
 
     /**
-     * Product collection for items to be calculated
-     *
-     * @var Mage_Catalog_Model_Resource_Product_Collection
-     */
-    protected $_productCollection = null;
-
-    /**
      * Tax class collection for items to be calculated
      *
      * @var Mage_Tax_Model_Resource_Class_Collection
      */
     protected $_taxClassCollection = null;
+
+    /**
+     * Avatax data items
+     *
+     * @var OnePica_AvaTax_Model_Avatax_Data_Container
+     */
+    protected $_avataxDataContainer;
 
     /**
      * Sets the company code on the request
@@ -362,38 +362,12 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     }
 
     /**
-     * Init product collection for items to be calculated
-     *
-     * @param Mage_Sales_Model_Mysql4_Order_Invoice_Item_Collection|array $items
-     * @return $this
-     */
-    protected function _initProductCollection($items)
-    {
-        $productIds = array();
-        foreach ($items as $item) {
-            if (!$this->isProductCalculated($item)) {
-                $productIds[] = $item->getProductId();
-                $simpleProductId = $this->_getSimpleProductIdByConfigurable($item);
-                if ($simpleProductId) {
-                    $productIds[] = $simpleProductId;
-                }
-            }
-        }
-
-        $this->_productCollection = Mage::getModel('catalog/product')->getCollection()
-            ->addAttributeToSelect('*')
-            ->addAttributeToFilter('entity_id', array('in' => $productIds));
-
-        return $this;
-    }
-
-    /**
      * Get simple product id from configurable item
      *
      * @param Mage_Sales_Model_Quote_Item|Mage_Sales_Model_Order_Creditmemo_Item|Mage_Sales_Model_Order_Invoice_Item $item
      * @return int
      */
-    protected function _getSimpleProductIdByConfigurable($item)
+    protected function _getSimpleItemByConfigurable($item)
     {
         if (($item instanceof Mage_Sales_Model_Quote_Item
             || $item instanceof Mage_Sales_Model_Quote_Address_Item)
@@ -401,7 +375,7 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
         ) {
             $children = $item->getChildren();
             if (isset($children[0]) && $children[0]->getProductId()) {
-                return $children[0]->getProductId();
+                return $children[0];
             }
         }
 
@@ -411,11 +385,11 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
         ) {
             $children = $item->getOrderItem()->getChildrenItems();
             if (isset($children[0]) && $children[0]->getProductId()) {
-                return $children[0]->getProductId();
+                return $children[0];
             }
         }
 
-        return 0;
+        return null;
     }
 
     /**
@@ -453,9 +427,9 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     protected function _initTaxClassCollection($object)
     {
         $taxClassIds = array();
-        foreach ($this->_getProductCollection() as $product) {
-            if (!in_array($product->getTaxClassId(), $taxClassIds)) {
-                $taxClassIds[] = $product->getTaxClassId();
+        foreach ($this->_avataxDataContainer->getAllItems() as $item) {
+            if (!in_array($item->getTaxClassId(), $taxClassIds)) {
+                $taxClassIds[] = $item->getTaxClassId();
             }
         }
         $gwTaxClassId = $this->_getGwTaxClassId($object);
@@ -467,21 +441,6 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
             ->addFieldToFilter('class_id', array('in' => $taxClassIds));
 
         return $this;
-    }
-
-    /**
-     * Get product collection for items to be calculated
-     *
-     * @return Mage_Catalog_Model_Resource_Product_Collection
-     * @throws OnePica_AvaTax_Exception
-     */
-    protected function _getProductCollection()
-    {
-        if (!$this->_productCollection) {
-            throw new OnePica_AvaTax_Exception('Product collection should be set before usage');
-        }
-
-        return $this->_productCollection;
     }
 
     /**
@@ -522,35 +481,6 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
         $taxClassId = $this->_getWrappingTaxClass($storeId);
         $taxClass = $this->_getTaxClassCollection()->getItemById($taxClassId);
         return $taxClass ? $taxClass->getOpAvataxCode() : '';
-    }
-
-    /**
-     * Get product from collection by given product id
-     *
-     * @param int $productId
-     * @return Mage_Catalog_Model_Product
-     * @throws OnePica_AvaTax_Exception
-     */
-    protected function _getProductByProductId($productId)
-    {
-        return $this->_getProductCollection()->getItemById($productId);
-    }
-
-    /**
-     * Get proper ref value for given product
-     *
-     * @param Mage_Catalog_Model_Product $product
-     * @param int                        $refNumber
-     * @param int                        $storeId
-     * @return string
-     */
-    protected function _getRefValueByProductAndNumber($product, $refNumber, $storeId)
-    {
-        $helperMethod = 'getRef' . $refNumber . 'AttributeCode';
-        $refCode = Mage::helper('avatax')->{$helperMethod}($storeId);
-        $value = $this->_getProductAttributeValue($product, $refCode);
-
-        return $value;
     }
 
     /**
@@ -606,54 +536,125 @@ abstract class OnePica_AvaTax_Model_Avatax_Abstract extends OnePica_AvaTax_Model
     }
 
     /**
-     * Get product attribute value
-     *
-     * @param Mage_Catalog_Model_Product $product
-     * @param string                     $code
-     * @return string
-     */
-    protected function _getProductAttributeValue($product, $code)
-    {
-        $value = '';
-        if ($code && $product->getResource()->getAttribute($code)) {
-            try {
-                $value = (string)$product->getResource()
-                    ->getAttribute($code)
-                    ->getFrontend()
-                    ->getValue($product);
-            } catch (Exception $e) {
-                Mage::logException($e);
-            }
-        }
-        return $value;
-    }
-
-    /**
      * Get UPC code from product
      *
-     * @param Mage_Catalog_Model_Product $product
-     * @param int|Mage_Core_Model_Store  $storeId
+     * @param Mage_Sales_Model_Order_Item $item
      * @return string
      */
-    protected function _getUpcCode($product, $storeId)
+    protected function _getUpcCode($item)
     {
-        $upc = $this->_getProductAttributeValue(
-            $product,
-            $this->_getUpcAttributeCode($storeId)
-        );
+        $upc = null;
+        $avataxItemData = $this->_getAvataxItemDataById($item->getId());
+        if (null !== $avataxItemData) {
+            $upc = $avataxItemData->getUpcCode();
+        }
 
         return !empty($upc) ? 'UPC:' . $upc : '';
     }
 
     /**
-     * Get UPC attribute code
+     * Get item code
      *
-     * @param int|Mage_Core_Model_Store $storeId
+     * @param Mage_Sales_Model_Order_Invoice_Item|Mage_Sales_Model_Order_Creditmemo_Item|Mage_Sales_Model_Order_Item $item
      * @return string
      */
-    protected function _getUpcAttributeCode($storeId)
+    protected function _getItemCode($item)
     {
-        return $this->_getDataHelper()->getUpcAttributeCode($storeId);
+        $item = $this->_getItemForItemCode($item);
+        $itemCode = $this->_getUpcCode($item);
+        if (empty($itemCode)) {
+            $itemCode = $item->getSku();
+        }
+
+        return substr($itemCode, 0, 50);
+    }
+
+    /**
+     * Get item for item code
+     *
+     * @param Mage_Sales_Model_Order_Invoice_Item|Mage_Sales_Model_Order_Creditmemo_Item|Mage_Sales_Model_Order_Item $item
+     * @return int
+     */
+    protected function _getItemForItemCode($item)
+    {
+        $itemForItemCode = $this->_getSimpleItemByConfigurable($item);
+        if (!$itemForItemCode) {
+            return $item;
+        }
+
+        return $itemForItemCode;
+    }
+
+    /**
+     * Avatax item data initialization
+     *
+     * @param Mage_Sales_Model_Resource_Order_Invoice_Item_Collection|Mage_Sales_Model_Resource_Order_Item_Collection $items
+     * @return $this
+     */
+    protected function _initAvataxDataContainer($items)
+    {
+        if (null !== $this->_avataxDataContainer) {
+            return $this;
+        }
+
+        $filteredItems = array();
+        foreach ($items as $item) {
+            if (!$this->isProductCalculated($item)) {
+                $filteredItems[] = $item;
+                $simpleItem = $this->_getSimpleItemByConfigurable($item);
+                if ($simpleItem) {
+                    $filteredItems[] = $simpleItem;
+                }
+            }
+        }
+
+        $this->_avataxDataContainer = Mage::getModel('avatax/avatax_data_container')->init($filteredItems);
+
+        return $this;
+    }
+
+    /**
+     * Get avatax item data by item id
+     *
+     * @param int $id
+     * @return null|OnePica_AvaTax_Model_Avatax_Data_Container_Item
+     */
+    protected function _getAvataxItemDataById($id)
+    {
+        return $this->_avataxDataContainer->getItemById($id);
+    }
+
+    /**
+     * Set avatax item data to line
+     *
+     * @param Mage_Sales_Model_Quote_Item|Mage_Sales_Model_Order_Item $item
+     * @param Line                                                    $line
+     * @return $this
+     */
+    protected function _setLineData($item, $line)
+    {
+        $avataxItemData = $this->_getAvataxItemDataById($item->getId());
+        if (null === $avataxItemData) {
+            return $this;
+        }
+
+        $line->setTaxCode($this->_getTaxClassCode($avataxItemData->getTaxClassId()));
+        $line->setRef1($avataxItemData->getFirstReferenceValue());
+        $line->setRef2($avataxItemData->getSecondReferenceValue());
+
+        return $this;
+    }
+
+    /**
+     * Get Avatax tax code by id
+     *
+     * @param int $id
+     * @return string
+     */
+    protected function _getTaxClassCode($id)
+    {
+        $taxClass = $this->_getTaxClassCollection()->getItemById($id);
+        return $taxClass ? $taxClass->getOpAvataxCode() : '';
     }
 
     /**

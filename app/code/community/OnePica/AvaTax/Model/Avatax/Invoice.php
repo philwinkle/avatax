@@ -69,7 +69,7 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
         $this->_addGeneralInfo($order);
         $this->_addShipping($invoice);
         $items = $invoice->getItemsCollection();
-        $this->_initProductCollection($items);
+        $this->_initAvataxDataContainer($items);
         $this->_initTaxClassCollection($invoice);
         //Added code for calculating tax for giftwrap items
         $this->_addGwOrderAmount($invoice);
@@ -152,7 +152,7 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
         $this->_addShipping($creditmemo, true);
 
         $items = $creditmemo->getAllItems();
-        $this->_initProductCollection($items);
+        $this->_initAvataxDataContainer($items);
         $this->_initTaxClassCollection($creditmemo);
         //Added code for calculating tax for giftwrap items
         $this->_addGwOrderAmount($creditmemo, true);
@@ -429,9 +429,6 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
             return false;
         }
 
-        $storeId = $this->_retrieveStoreIdFromItem($item);
-        $product = $this->_getProductByProductId($item->getProductId());
-        $taxClass = $this->_getTaxClassCodeByProduct($product);
         $price = $item->getBaseRowTotal() - $item->getBaseDiscountAmount();
         if ($credit) {
             //@startSkipCommitHooks
@@ -441,47 +438,15 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
 
         $line = new Line();
         $line->setNo(count($this->_lines));
-        $line->setItemCode($this->_getItemCode($this->_getProductForItemCode($item), $item, $storeId));
+        $this->_setLineData($item->getOrderItem(), $line);
+        $line->setItemCode($this->_getItemCode($item));
         $line->setDescription($item->getName());
         $line->setQty($item->getQty());
         $line->setAmount($price);
         $line->setDiscounted($item->getBaseDiscountAmount() ? true : false);
-        if ($taxClass) {
-            $line->setTaxCode($taxClass);
-        }
-        $ref1Value = $this->_getRefValueByProductAndNumber($product, 1, $storeId);
-        if ($ref1Value) {
-            $line->setRef1($ref1Value);
-        }
-        $ref2Value = $this->_getRefValueByProductAndNumber($product, 2, $storeId);
-        if ($ref2Value) {
-            $line->setRef2($ref2Value);
-        }
 
         $this->_lineToItemId[count($this->_lines)] = $item->getOrderItemId();
         $this->_lines[] = $line;
-    }
-
-    /**
-     * Retrieve product for item code
-     *
-     * @param Mage_Sales_Model_Order_Invoice_Item|Mage_Sales_Model_Order_Creditmemo_Item $item
-     * @return null|Mage_Catalog_Model_Product
-     */
-    protected function _getProductForItemCode($item)
-    {
-        $product = $this->_getProductByProductId($item->getProductId());
-        if (!$this->_isConfigurable($item)) {
-            return $product;
-        }
-
-        $children = $item->getOrderItem()->getChildrenItems();
-
-        if (isset($children[0]) && $children[0]->getProductId()) {
-            $product = $this->_getProductByProductId($children[0]->getProductId());
-        }
-
-        return $product;
     }
 
     /**
@@ -514,23 +479,5 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
         return Mage::app()->getLocale()
             ->storeDate($storeId, $gmt, false, Varien_Date::DATETIME_INTERNAL_FORMAT)
             ->toString(Varien_Date::DATE_INTERNAL_FORMAT);
-    }
-
-    /**
-     * Get item code
-     *
-     * @param Mage_Catalog_Model_Product                                                 $product
-     * @param Mage_Sales_Model_Order_Invoice_Item|Mage_Sales_Model_Order_Creditmemo_Item $item
-     * @param int|Mage_Core_Model_Store                                                  $storeId
-     * @return string
-     */
-    protected function _getItemCode($product, $item, $storeId)
-    {
-        $itemCode = $this->_getUpcCode($product, $storeId);
-        if (empty($itemCode)) {
-            $itemCode = $item->getSku();
-        }
-
-        return substr($itemCode, 0, 50);
     }
 }

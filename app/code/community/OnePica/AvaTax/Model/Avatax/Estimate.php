@@ -418,7 +418,7 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
         }
 
         if (count($items) > 0) {
-            $this->_initProductCollection($items);
+            $this->_initAvataxDataContainer($items);
             $this->_initTaxClassCollection($item->getAddress());
             foreach ($items as $item) {
                 /** @var Mage_Sales_Model_Quote_Item $item */
@@ -442,55 +442,21 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
         if ($this->isProductCalculated($item)) {
             return false;
         }
-        $product = $this->_getProductByProductId($item->getProductId());
-        $taxClass = $this->_getTaxClassCodeByProduct($product);
+
         $price = $item->getBaseRowTotal() - $item->getBaseDiscountAmount();
         $lineNumber = count($this->_lines);
         $line = new Line();
         $line->setNo($lineNumber);
-        $line->setItemCode($this->_getItemCode($this->_getProductForItemCode($item), $item->getStoreId()));
-        $line->setDescription($product->getName());
+        $this->_setLineData($item, $line);
+        $line->setItemCode($this->_getItemCode($item));
+        $line->setDescription($item->getName());
         $line->setQty($item->getQty());
         $line->setAmount($price);
         $line->setDiscounted($item->getDiscountAmount() ? true : false);
 
-        if ($taxClass) {
-            $line->setTaxCode($taxClass);
-        }
-        $ref1Value = $this->_getRefValueByProductAndNumber($product, 1, $item->getStoreId());
-        if ($ref1Value) {
-            $line->setRef1($ref1Value);
-        }
-        $ref2Value = $this->_getRefValueByProductAndNumber($product, 2, $item->getStoreId());
-        if ($ref2Value) {
-            $line->setRef2($ref2Value);
-        }
-
         $this->_lines[$lineNumber] = $line;
         $this->_lineToLineId[$lineNumber] = $item->getSku();
         return $lineNumber;
-    }
-
-    /**
-     * Retrieve product for item code
-     *
-     * @param Mage_Sales_Model_Quote_Address_Item|Mage_Sales_Model_Quote_Item $item
-     * @return null|Mage_Catalog_Model_Product
-     */
-    protected function _getProductForItemCode($item)
-    {
-        $product = $this->_getProductByProductId($item->getProductId());
-        if (!$this->_isConfigurable($item)) {
-            return $product;
-        }
-
-        $children = $item->getChildren();
-
-        if (isset($children[0]) && $children[0]->getProductId()) {
-            $product = $this->_getProductByProductId($children[0]->getProductId());
-        }
-
-        return $product;
     }
 
     /**
@@ -515,22 +481,5 @@ class OnePica_AvaTax_Model_Avatax_Estimate extends OnePica_AvaTax_Model_Avatax_A
     protected function _getTaxArrayCodeByLine($line)
     {
         return isset($this->_productGiftPair[$line->getNo()]) ? 'gw_items' : 'items';
-    }
-
-    /**
-     * Get item code
-     *
-     * @param Mage_Catalog_Model_Product $product
-     * @param int|Mage_Core_Model_Store  $storeId
-     * @return string
-     */
-    protected function _getItemCode($product, $storeId)
-    {
-        $itemCode = $this->_getUpcCode($product, $storeId);
-        if (empty($itemCode)) {
-            $itemCode = $product->getSku();
-        }
-
-        return substr($itemCode, 0, 50);
     }
 }
