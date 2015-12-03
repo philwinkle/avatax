@@ -73,6 +73,40 @@ class OnePica_AvaTax_Model_Observer extends Mage_Core_Model_Abstract
      */
     public function salesQuoteItemSetProduct(Varien_Event_Observer $observer)
     {
+        $this->_setAvataxData($observer->getQuoteItem(), $observer->getProduct());
+    }
+
+    /**
+     * Set Avatax data to quote item
+     *
+     * @param Mage_Sales_Model_Quote_Item $quoteItem
+     * @param Mage_Catalog_Model_Product  $product
+     * @return $this
+     */
+    protected function _setAvataxData($quoteItem, $product)
+    {
+        $data = $this->_getDataHelper()
+            ->prepareAvataxData(
+                $this->_getProductById($product->getId(), $product->getStoreId())
+            );
+        $quoteItem->setAvataxData(serialize($data));
+
+        return $this;
+    }
+
+    /**
+     * Get product by ids
+     *
+     * @param int $id
+     * @param int $storeId
+     * @return null|Mage_Catalog_Model_Product
+     */
+    protected function _getProductById($id, $storeId = null)
+    {
+        return Mage::getModel('catalog/product')->getCollection()->setStoreId($storeId)
+            ->addAttributeToSelect($this->_getDataHelper()->getAttributeToSelect($storeId))
+            ->addAttributeToFilter('entity_id', $id)
+            ->getFirstItem();
     }
 
     /**

@@ -647,4 +647,74 @@ class OnePica_AvaTax_Helper_Data extends Mage_Core_Helper_Abstract
         }
         return (string)$this->_getConfig('upc_attribute_code', $storeId);
     }
+
+    /**
+     * Prepare avatax data.
+     *
+     * @param Mage_Catalog_Model_Product $product
+     * @return array
+     */
+    public function prepareAvataxData($product)
+    {
+        if (null === $product) {
+            return array();
+        }
+
+        return array(
+            OnePica_AvaTax_Model_Avatax_Data_Container_Item::TAX_CLASS_ID_KEY     => (int)$product->getTaxClassId(),
+            OnePica_AvaTax_Model_Avatax_Data_Container_Item::UPC_CODE_TAX         =>
+                $this->_getProductUpcCode($product),
+            OnePica_AvaTax_Model_Avatax_Data_Container_Item::FIRST_REFERENCE_KEY  =>
+                $this->_getRefValueByProductAndNumber($product, 1),
+            OnePica_AvaTax_Model_Avatax_Data_Container_Item::SECOND_REFERENCE_KEY =>
+                $this->_getRefValueByProductAndNumber($product, 2),
+        );
+    }
+
+    /**
+     * Get UPC code from product
+     *
+     * @param Mage_Catalog_Model_Product $product
+     * @return string
+     */
+    protected function _getProductUpcCode($product)
+    {
+        $upcCode = $this->getUpcAttributeCode($product->getStoreId()) ?: null;
+        $upc = $product->getData($upcCode);
+
+        return !empty($upc) ? $upc : null;
+    }
+
+    /**
+     * Get proper ref value for given product
+     *
+     * @param Mage_Catalog_Model_Product $product
+     * @param int                        $refNumber
+     * @return null|string
+     */
+    protected function _getRefValueByProductAndNumber($product, $refNumber)
+    {
+        $value = null;
+        $helperMethod = 'getRef' . $refNumber . 'AttributeCode';
+        $refCode = $this->{$helperMethod}($product->getStoreId()) ?: null;
+        $value = $product->getData($refCode);
+
+        return $value;
+    }
+
+    /**
+     * Get attribute to select
+     *
+     * @param int $storeId
+     * @return array
+     */
+    public function getAttributeToSelect($storeId)
+    {
+        return array(
+            $this->getUpcAttributeCode($storeId),
+            $this->getRef1AttributeCode($storeId),
+            $this->getRef2AttributeCode($storeId),
+            'tax_class_id'
+        );
+    }
 }
