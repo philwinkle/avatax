@@ -33,8 +33,8 @@ class OnePica_AvaTax_Model_Avatax_Data_Container
      */
     public function init($items)
     {
-        foreach ($this->_getContainerTypes() as $dataProviderName) {
-            $this->_items = $this->_getContainerByType($dataProviderName)->prepareItems($items)->getItems();
+        foreach ($this->_getContainerTypes() as $containerType) {
+            $this->_items = $this->_getContainerByType($containerType)->prepareItems($items)->getItems();
 
             if ($this->_items) {
                 break;
