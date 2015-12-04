@@ -439,7 +439,7 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
         $line = new Line();
         $line->setNo(count($this->_lines));
         $this->_setLineData($item->getOrderItem(), $line);
-        $line->setItemCode($this->_getItemCode($item->getOrderItem()));
+        $line->setItemCode($this->_getItemCode($item));
         $line->setDescription($item->getName());
         $line->setQty($item->getQty());
         $line->setAmount($price);
@@ -447,6 +447,21 @@ class OnePica_AvaTax_Model_Avatax_Invoice extends OnePica_AvaTax_Model_Avatax_Ab
 
         $this->_lineToItemId[count($this->_lines)] = $item->getOrderItemId();
         $this->_lines[] = $line;
+    }
+
+    /**
+     * Get item code
+     *
+     * @param Mage_Sales_Model_Order_Invoice_Item|Mage_Sales_Model_Order_Creditmemo_Item|Mage_Sales_Model_Order_Item $item
+     * @return string
+     */
+    protected function _getItemCode($item)
+    {
+        if (!$this->_isConfigurable($item)) {
+            $item = $item->getOrderItem();
+        }
+
+        return parent::_getItemCode($item);
     }
 
     /**
