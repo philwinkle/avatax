@@ -735,4 +735,13 @@ class OnePica_AvaTax_Helper_Config extends Mage_Core_Helper_Abstract
     {
         return (string)Mage::getStoreConfig(self::PATH_TO_AVATAX16_ADDRESS_VALIDATION_MESSAGE, $store);
     }
+
+    /** Prices include tax
+     * @return bool
+     */
+    public function getTaxCalculationPriceIncludesTax()
+    {
+        //tax_calculation_price_includes_tax
+        return true;
+    }
 }

@@ -155,6 +155,8 @@ class OnePica_AvaTax_Model_Service_Avatax_Estimate
                     $id = $this->_getItemIdByLine($ctl);
                     $code = $this->_getTaxArrayCodeByLine($ctl);
                     $this->_rates[$requestKey][$code][$id] = array(
+                        'taxable' => $ctl->getTaxable(),
+                        'tax_included' => $ctl->getTaxIncluded(),
                         'rate' => ($ctl->getTax() ? $ctl->getRate() : 0) * 100,
                         'amt' => $ctl->getTax(),
                     );
@@ -399,6 +401,10 @@ class OnePica_AvaTax_Model_Service_Avatax_Estimate
         $ref2Value = $this->_getRefValueByProductAndNumber($product, 2, $item->getStoreId());
         if ($ref2Value) {
             $line->setRef2($ref2Value);
+        }
+
+        if (Mage::helper('avatax/config')->getTaxCalculationPriceIncludesTax()) {
+            $line->setTaxIncluded(true);
         }
 
         $this->_lines[$lineNumber] = $line;

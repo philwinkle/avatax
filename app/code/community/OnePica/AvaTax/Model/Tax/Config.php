@@ -76,14 +76,14 @@ class OnePica_AvaTax_Model_Tax_Config extends Mage_Tax_Model_Config
      * @param null|int $store
      * @return bool
      */
-    public function displayCartPricesInclTax($store = null)
+   /* public function displayCartPricesInclTax($store = null)
     {
         if ($this->_getDataHelper()->isServiceEnabled($store)) {
             return false;
         }
 
         return parent::displayCartPricesInclTax($store);
-    }
+    }*/
 
     /**
      * Check if display cart prices excluded tax
@@ -91,14 +91,14 @@ class OnePica_AvaTax_Model_Tax_Config extends Mage_Tax_Model_Config
      * @param null|int $store
      * @return bool
      */
-    public function displayCartPricesExclTax($store = null)
+   /* public function displayCartPricesExclTax($store = null)
     {
         if ($this->_getDataHelper()->isServiceEnabled($store)) {
             return true;
         }
 
         return parent::displayCartPricesExclTax($store);
-    }
+    }*/
 
     /**
      * Check if display cart prices included and excluded tax
@@ -106,14 +106,14 @@ class OnePica_AvaTax_Model_Tax_Config extends Mage_Tax_Model_Config
      * @param null|int $store
      * @return bool
      */
-    public function displayCartPricesBoth($store = null)
+    /*public function displayCartPricesBoth($store = null)
     {
         if ($this->_getDataHelper()->isServiceEnabled($store)) {
             return false;
         }
 
         return parent::displayCartPricesBoth($store);
-    }
+    }*/
 
     /**
      * Check if display cart subtotal included tax
@@ -121,14 +121,14 @@ class OnePica_AvaTax_Model_Tax_Config extends Mage_Tax_Model_Config
      * @param mixed $store
      * @return bool
      */
-    public function displayCartSubtotalInclTax($store = null)
+    /*public function displayCartSubtotalInclTax($store = null)
     {
         if ($this->_getDataHelper()->isServiceEnabled($store)) {
             return false;
         }
 
         return parent::displayCartSubtotalInclTax($store);
-    }
+    }*/
 
     /**
      * Check if display cart subtotal excluded tax
@@ -136,14 +136,14 @@ class OnePica_AvaTax_Model_Tax_Config extends Mage_Tax_Model_Config
      * @param mixed $store
      * @return bool
      */
-    public function displayCartSubtotalExclTax($store = null)
+    /*public function displayCartSubtotalExclTax($store = null)
     {
         if ($this->_getDataHelper()->isServiceEnabled($store)) {
             return true;
         }
 
         return parent::displayCartSubtotalExclTax($store);
-    }
+    }*/
 
     /**
      * Check if display cart subtotal included and excluded tax
