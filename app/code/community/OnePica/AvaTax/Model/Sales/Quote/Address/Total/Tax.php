@@ -103,15 +103,6 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
                     $item->setRowTotalInclTax($item->getRowTotal() + $amount);
                     $item->setBaseRowTotalInclTax($item->getBaseRowTotal() + $baseAmount);
 
-                    //$item->setRowTotal($item->getPrice()*$item->getQty());
-
-                    /*$item->setPriceInclTax($item->getPrice());
-                    $item->setBasePriceInclTax($item->getBasePrice());
-                    $item->setRowTotalInclTax($item->getRowTotal());
-                    $item->setBaseRowTotalInclTax($item->getBaseRowTotal());
-                    $item->setPrice($item->getPriceInclTax() - ($amount / $item->getQty()));
-                    $item->setBasePrice($item->getBasePriceInclTax() - ($baseAmount / $item->getQty()));*/
-
                 } else {
                     $item->setPriceInclTax($item->getPrice() + ($amount / $item->getQty()));
                     $item->setBasePriceInclTax($item->getBasePrice() + ($baseAmount / $item->getQty()));
