@@ -200,6 +200,18 @@ class OnePica_AvaTax_Model_Action_Calculator extends OnePica_AvaTax_Model_Action
         return 0;
     }
 
+    public function getItemTaxable($item)
+    {
+        if ($this->isProductCalculated($item)) {
+            return 0;
+        } else {
+            $id = $item->getSku();
+            $ratesData = $this->_getRates();
+
+            return isset($ratesData['items'][$id]['taxable']) ? $ratesData['items'][$id]['taxable'] : 0;
+        }
+    }
+
     /**
      * Get tax detail summary
      *
