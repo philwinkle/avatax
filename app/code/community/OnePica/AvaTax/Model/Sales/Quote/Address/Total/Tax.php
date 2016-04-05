@@ -97,24 +97,26 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
         $store = $address->getQuote()->getStore();
 
         foreach ($summary as $key => $row) {
-            $id = $row['name'];
-            $fullInfo[$id] = array(
-                'rates'       => array(
-                    array(
-                        'code'     => $row['name'],
-                        'title'    => $row['name'],
-                        'percent'  => $row['rate'],
-                        'position' => $key,
-                        'priority' => $key,
-                        'rule_id'  => 0
-                    )
-                ),
-                'percent'     => $row['rate'],
-                'id'          => $id,
-                'process'     => 0,
-                'amount'      => $store->convertPrice($row['amt']),
-                'base_amount' => $row['amt']
-            );
+            if (!$row['is_fpt']) {
+                $id = $row['name'];
+                $fullInfo[$id] = array(
+                    'rates'       => array(
+                        array(
+                            'code'     => $row['name'],
+                            'title'    => $row['name'],
+                            'percent'  => $row['rate'],
+                            'position' => $key,
+                            'priority' => $key,
+                            'rule_id'  => 0
+                        )
+                    ),
+                    'percent'     => $row['rate'],
+                    'id'          => $id,
+                    'process'     => 0,
+                    'amount'      => $store->convertPrice($row['amt']),
+                    'base_amount' => $row['amt']
+                );
+            }
         }
 
         $address->setAppliedTaxes($fullInfo);
@@ -402,10 +404,14 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
      */
     protected function _applyItemTax(Mage_Sales_Model_Quote_Address $address, $calculator, $store)
     {
+        $this->_applyItemFPT($address, $calculator);
+
         /** @var Mage_Sales_Model_Quote_Item $item */
         foreach ($address->getAllItems() as $item) {
             $item->setAddress($address);
             $baseAmount = $calculator->getItemTax($item);
+
+            $fptAmt = $calculator->getItemFPT($item);
 
             $giftBaseTaxTotalAmount = $calculator->getItemGiftTax($item);
             $this->_itemTaxGroups[$item->getId()] = $calculator->getItemTaxGroup($item);
@@ -416,7 +422,7 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
             $amount = $store->convertPrice($baseAmount);
             $percent = $calculator->getItemRate($item);
 
-            $item->setTaxAmount($amount);
+            $item->setTaxAmount($amount - $fptAmt);
             $item->setBaseTaxAmount($baseAmount);
             $item->setTaxPercent($percent);
 
@@ -474,6 +480,56 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
             if (!$item->getParentItem()) {
                 $this->_addSubtotalAmount($address, $item);
             }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Apply FPT to Address
+     *
+     * @param Mage_Sales_Model_Quote_Address         $address
+     * @param OnePica_AvaTax_Model_Action_Calculator $calculator
+     *
+     * @return $this
+     */
+    protected function _applyItemFPT(Mage_Sales_Model_Quote_Address $address,
+        OnePica_AvaTax_Model_Action_Calculator $calculator)
+    {
+        /* @var $weeHelper Mage_Weee_Helper_Data */
+        $weeHelper = Mage::helper('weee');
+        /* @var $item Mage_Sales_Model_Quote_Item */
+        foreach ($address->getAllVisibleItems() as $item) {
+            $jurisdictionFPT = $calculator->getItemJurisdictionFPT($item);
+            $fpt = $calculator->getItemFPT($item);
+            $fixedTax = array();
+            foreach ($jurisdictionFPT as $key => $amt) {
+
+                $discount = false;
+                if ($discount) {
+                    $amt = $amt - $amt * 0.2;
+                }
+
+                $fixedTax[] =
+                    array(
+                        'title'                    => $key,
+                        'base_amount'              => "{$amt}",
+                        'amount'                   => $amt,
+                        'row_amount'               => $amt,
+                        'base_row_amount'          => $amt,
+                        'base_amount_incl_tax'     => "$amt",
+                        'amount_incl_tax'          => $amt,
+                        'row_amount_incl_tax'      => $amt,
+                        'base_row_amount_incl_tax' => $amt
+                    );
+            }
+
+            $item->setWeeeTaxAppliedAmount($fpt);
+            $item->setBaseWeeeTaxAppliedAmount($fpt);
+            $item->setWeeeTaxAppliedRowAmount($fpt);
+            $item->setBaseWeeeTaxAppliedRowAmount($fpt);
+
+            $weeHelper->setApplied($item, $fixedTax);
         }
 
         return $this;

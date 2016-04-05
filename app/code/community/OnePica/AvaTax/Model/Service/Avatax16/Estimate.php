@@ -153,7 +153,9 @@ class OnePica_AvaTax_Model_Service_Avatax16_Estimate extends OnePica_AvaTax_Mode
                     $this->_rates[$requestKey][$code][$id] = array(
                         'rate' => $this->_getLineRate($ctl),
                         'amt'  => $ctl->getCalculatedTax()->getTax(),
-                        'jurisdiction_rates' => $this->_getItemJurisdictionRate($ctl)
+                        'jurisdiction_rates' => $this->_getItemJurisdictionRate($ctl),
+                        'fpt' => $this->_getLineFPT($ctl),
+                        'jurisdiction_fpt' => $this->_getItemJurisdictionFPT($ctl)
                     );
                 }
                 $this->_rates[$requestKey]['summary'] = $this->_getSummaryFromResponse($result);
@@ -595,11 +597,25 @@ class OnePica_AvaTax_Model_Service_Avatax16_Estimate extends OnePica_AvaTax_Mode
                     $data->getJurisdictionName(),
                     $data->getJurisdictionType()
                 );
-                $result[] = array(
-                    'name' => $jurisdiction,
-                    'rate' => isset($rates[$jurisdiction]) ? $rates[$jurisdiction] : 0,
-                    'amt'  => $data->getTax()
-                );
+
+                if (array_key_exists($jurisdiction, $rates['jurisdiction_rate'])) {
+                    $result[] = array(
+                        'name' => $jurisdiction,
+                        'rate' => isset($rates['jurisdiction_rate'][$jurisdiction])
+                            ? $rates['jurisdiction_rate'][$jurisdiction] : 0,
+                        'is_fpt' => false,
+                        'amt'  => $data->getTax()
+                    );
+                }
+
+                if (array_key_exists($jurisdiction, $rates['jurisdiction_fpt'])) {
+                    $result[] = array(
+                        'name' => $jurisdiction,
+                        'rate' => null,
+                        'is_fpt' => true,
+                        'amt'  => $data->getTax()
+                    );
+                }
             }
         }
 
@@ -615,7 +631,6 @@ class OnePica_AvaTax_Model_Service_Avatax16_Estimate extends OnePica_AvaTax_Mode
     protected function _getJurisdictionsRate($response)
     {
         $rates = array();
-        $fixedRatesData = array();
 
         /** @var OnePica_AvaTax16_Document_Response_Line $line */
         foreach ($response->getLines() as $line) {
@@ -630,29 +645,17 @@ class OnePica_AvaTax_Model_Service_Avatax16_Estimate extends OnePica_AvaTax_Mode
                     $detail->getJurisdictionType()
                 );
 
-                if (!isset($rates[$jurisdiction]) && $detail->getRate()) {
-                    $rates[$jurisdiction] = $detail->getRate() * 100;
-                }
-
-                if (!$detail->getRate() && $detail->getTax()) {
-                    if (!isset($fixedRatesData[$jurisdiction]['fixedTax'])) {
-                        $fixedRatesData[$jurisdiction]['fixedTax'] = 0;
+                if ($detail->getRate()) {
+                    if (!array_key_exists($jurisdiction, $rates['jurisdiction_rate'])) {
+                        $rates['jurisdiction_rate'][$jurisdiction] = $detail->getRate() * 100;
                     }
-                    if (!isset($fixedRatesData[$jurisdiction]['lineAmount'])) {
-                        $fixedRatesData[$jurisdiction]['lineAmount'] = 0;
-                    }
-                    $fixedRatesData[$jurisdiction]['fixedTax'] += $detail->getTax();
-                    $fixedRatesData[$jurisdiction]['lineAmount'] += $line->getLineAmount();
+                } else {
+                    $rates['jurisdiction_fpt'][$jurisdiction] += $detail->getTax();
                 }
             }
         }
 
-        $fixedRates = array();
-        foreach ($fixedRatesData as $jurisdiction => $values) {
-            $fixedRates[$jurisdiction] = $this->_calculateRate($values['fixedTax'], $values['lineAmount']);
-        }
-
-        return array_merge($rates, $fixedRates);
+        return $rates;
     }
 
     /**
@@ -688,25 +691,68 @@ class OnePica_AvaTax_Model_Service_Avatax16_Estimate extends OnePica_AvaTax_Mode
      * @param OnePica_AvaTax16_Document_Response_Line $line
      * @return array
      */
-    protected function _getItemJurisdictionRate($line)
+    protected function _getItemJurisdictionRate(OnePica_AvaTax16_Document_Response_Line $line)
     {
         $rates = array();
         if ($line->getCalculatedTax()->getTax()) {
             foreach ($line->getCalculatedTax()->getDetails() as $detail) {
-                $jurisdiction = $this->_prepareJurisdictionName(
-                    $detail->getTaxType(),
-                    $detail->getJurisdictionName(),
-                    $detail->getJurisdictionType()
-                );
-                $rates[$jurisdiction] = $detail->getRate() * 100;
-
-                if ($rates[$jurisdiction] === 0 && $detail->getTax()) {
-                    $rates[$jurisdiction] = $this->_calculateRate($detail->getTax(), $line->getLineAmount());
+                if ($detail->getRate() !== null) {
+                    $jurisdiction = $this->_prepareJurisdictionName(
+                        $detail->getTaxType(),
+                        $detail->getJurisdictionName(),
+                        $detail->getJurisdictionType()
+                    );
+                    $rates[$jurisdiction] = $detail->getRate() * 100;
                 }
             }
         }
 
         return $rates;
+    }
+
+    /**
+     * Get item jurisdiction FPT
+     *
+     * @param OnePica_AvaTax16_Document_Response_Line $line
+     *
+     * @return array
+     */
+    protected function _getItemJurisdictionFPT(OnePica_AvaTax16_Document_Response_Line $line)
+    {
+        $rates = array();
+        if ($line->getCalculatedTax()->getTax()) {
+            foreach ($line->getCalculatedTax()->getDetails() as $detail) {
+                if ($detail->getRate() === null) {
+                    $jurisdiction = $this->_prepareJurisdictionName(
+                        $detail->getTaxType(),
+                        $detail->getJurisdictionName(),
+                        $detail->getJurisdictionType()
+                    );
+                    $rates[$jurisdiction] = $detail->getTax();
+                }
+            }
+        }
+
+        return $rates;
+    }
+
+    /**
+     * Get line rate
+     *
+     * @param OnePica_AvaTax16_Document_Response_Line $line
+     * @return float
+     */
+    protected function _getLineFPT($line)
+    {
+        $tax = 0;
+        if ($line->getCalculatedTax()->getTax()) {
+            foreach ($line->getCalculatedTax()->getDetails() as $detail) {
+                if ($detail->getRate() === null) {
+                    $tax += $detail->getTax();
+                }
+            }
+        }
+        return $tax;
     }
 
     /**
@@ -726,18 +772,6 @@ class OnePica_AvaTax_Model_Service_Avatax16_Estimate extends OnePica_AvaTax_Mode
                 . $jurisdictionType;
 
         return ucfirst(trim($name));
-    }
-
-    /**
-     * Calculate rate
-     *
-     * @param float $tax
-     * @param float $amount
-     * @return float
-     */
-    protected function _calculateRate($tax, $amount)
-    {
-        return $this->_getHelper()->roundUp(($tax / $amount) * 100, 2);
     }
 
     /**

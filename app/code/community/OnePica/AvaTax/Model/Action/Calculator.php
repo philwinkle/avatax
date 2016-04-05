@@ -115,6 +115,45 @@ class OnePica_AvaTax_Model_Action_Calculator extends OnePica_AvaTax_Model_Action
     }
 
     /**
+     * Get Item FPT amount
+     *
+     * @param Mage_Sales_Model_Quote_Item $item
+     *
+     * @return int
+     */
+    public function getItemFPT(Mage_Sales_Model_Quote_Item $item)
+    {
+        if ($this->isProductCalculated($item)) {
+            return 0;
+        } else {
+            $id = $item->getId();
+            $ratesData = $this->_getRates();
+
+            return isset($ratesData['items'][$id]['fpt']) ? $ratesData['items'][$id]['fpt'] : 0;
+        }
+    }
+
+    /**
+     * Get Item FPT Jurisdiction
+     *
+     * @param Mage_Sales_Model_Quote_Item $item
+     *
+     * @return array
+     */
+    public function getItemJurisdictionFPT(Mage_Sales_Model_Quote_Item $item)
+    {
+        if ($this->isProductCalculated($item)) {
+            return 0;
+        } else {
+            $id = $item->getId();
+            $ratesData = $this->_getRates();
+
+            return isset($ratesData['items'][$id]['jurisdiction_fpt'])
+                ? $ratesData['items'][$id]['jurisdiction_fpt'] : array();
+        }
+    }
+
+    /**
      * Get item taxable
      *
      * @param Mage_Sales_Model_Quote_Item $item
