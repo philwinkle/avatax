@@ -405,13 +405,18 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
     protected function _applyItemTax(Mage_Sales_Model_Quote_Address $address, $calculator, $store)
     {
         $this->_applyItemFPT($address, $calculator);
+        $this->_applayFPTDiscount($address);
+
 
         /** @var Mage_Sales_Model_Quote_Item $item */
         foreach ($address->getAllItems() as $item) {
             $item->setAddress($address);
             $baseAmount = $calculator->getItemTax($item);
 
+            $baseAmount -= ($item->getWeeeDiscount()) ? $item->getWeeeDiscount() : 0;
+
             $fptAmt = $calculator->getItemFPT($item);
+            $fptAmt -= ($item->getWeeeDiscount()) ? $item->getWeeeDiscount() : 0;
 
             $giftBaseTaxTotalAmount = $calculator->getItemGiftTax($item);
             $this->_itemTaxGroups[$item->getId()] = $calculator->getItemTaxGroup($item);
@@ -530,9 +535,37 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
             $item->setBaseWeeeTaxAppliedRowAmount($fpt);
 
             $weeHelper->setApplied($item, $fixedTax);
+
+            $item->setDiscountCalculationPrice($item->getPrice() + $fpt);
+            $item->setBaseDiscountCalculationPrice($item->getPrice() + $fpt);
         }
 
         return $this;
+    }
+
+    protected function _applayFPTDiscount(Mage_Sales_Model_Quote_Address $address)
+    {
+        $verMageSalesRule = Mage::getConfig()->getNode()->modules->Mage_SalesRule->version;
+        if (version_compare($verMageSalesRule, '1.6.0.3') >= 0) {
+        }
+
+        $quote = $address->getQuote();
+        $store = $quote->getStore();
+        if (Mage::helper('weee')->isEnabled() && Mage::helper('weee')->isDiscounted($store)) {
+            /* @var $calc Mage_SalesRule_Model_Validator */
+            $calc = Mage::getModel('salesrule/validator');
+            // processWeeeAmount method was implemented only in magento 1.8.0.0, Mage_SalesRule 1.6.0.3
+            // earlier versions of magento, like 1.7.0.0 does not support discount per FPT,
+            // only whole discount on subtotal
+            if (method_exists($calc, 'processWeeeAmount')) {
+                $calc->init(
+                    $store->getWebsiteId(), $quote->getCustomerGroupId(),
+                    $quote->getCouponCode()
+                );
+                $items = $address->getAllVisibleItems();
+                $calc->processWeeeAmount($address, $items);
+            }
+        }
     }
 
     /**
