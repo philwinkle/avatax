@@ -415,7 +415,7 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
 
             $baseAmount -= ($item->getWeeeDiscount()) ? $item->getWeeeDiscount() : 0;
 
-            $fptAmt = $calculator->getItemFPT($item);
+            $fptAmt = $item->getWeeeTaxAppliedRowAmount();
             $fptAmt -= ($item->getWeeeDiscount()) ? $item->getWeeeDiscount() : 0;
 
             $giftBaseTaxTotalAmount = $calculator->getItemGiftTax($item);
@@ -506,38 +506,41 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
         /* @var $item Mage_Sales_Model_Quote_Item */
         foreach ($address->getAllVisibleItems() as $item) {
             $jurisdictionFPT = $calculator->getItemJurisdictionFPT($item);
-            $fpt = $calculator->getItemFPT($item);
+            $fptRow = $calculator->getItemFPT($item);
+            $fptItem = $this->_getDataHelper()->roundUp($fptRow / $item->getQty(), 2);
             $fixedTax = array();
-            foreach ($jurisdictionFPT as $key => $amt) {
+            foreach ($jurisdictionFPT as $key => $amtRow) {
 
-                $discount = false;
-                if ($discount) {
-                    $amt = $amt - $amt * 0.2;
-                }
+//                $discount = false;
+//                if ($discount) {
+//                    $amtRow = $amtRow - $amtRow * 0.2;
+//                }
+
+                $amtItem = $this->_getDataHelper()->roundUp($amtRow / $item->getQty(), 2);
 
                 $fixedTax[] =
                     array(
                         'title'                    => $key,
-                        'base_amount'              => "{$amt}",
-                        'amount'                   => $amt,
-                        'row_amount'               => $amt,
-                        'base_row_amount'          => $amt,
-                        'base_amount_incl_tax'     => "$amt",
-                        'amount_incl_tax'          => $amt,
-                        'row_amount_incl_tax'      => $amt,
-                        'base_row_amount_incl_tax' => $amt
+                        'base_amount'              => "{$amtItem}",
+                        'amount'                   => $amtItem,
+                        'row_amount'               => $amtRow,
+                        'base_row_amount'          => $amtItem,
+                        'base_amount_incl_tax'     => "$amtItem",
+                        'amount_incl_tax'          => $amtItem,
+                        'row_amount_incl_tax'      => $amtRow,
+                        'base_row_amount_incl_tax' => $amtRow
                     );
             }
 
-            $item->setWeeeTaxAppliedAmount($fpt);
-            $item->setBaseWeeeTaxAppliedAmount($fpt);
-            $item->setWeeeTaxAppliedRowAmount($fpt);
-            $item->setBaseWeeeTaxAppliedRowAmount($fpt);
+            $item->setWeeeTaxAppliedAmount($fptItem);
+            $item->setBaseWeeeTaxAppliedAmount($fptItem);
+            $item->setWeeeTaxAppliedRowAmount($fptRow);
+            $item->setBaseWeeeTaxAppliedRowAmount($fptRow);
 
             $weeHelper->setApplied($item, $fixedTax);
 
-            $item->setDiscountCalculationPrice($item->getPrice() + $fpt);
-            $item->setBaseDiscountCalculationPrice($item->getPrice() + $fpt);
+            $item->setDiscountCalculationPrice($item->getPrice() + $fptRow);
+            $item->setBaseDiscountCalculationPrice($item->getPrice() + $fptRow);
         }
 
         return $this;
@@ -575,6 +578,17 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
      */
     protected function _addSubtotalAmount(Mage_Sales_Model_Quote_Address $address, $item)
     {
+        if (Mage::helper('weee')->isEnabled() && Mage::helper('weee')->includeInSubtotal()) {
+            $address->setTotalAmount(
+                'subtotal',
+                $address->getTotalAmount('subtotal') + $item->getWeeeTaxAppliedRowAmount()
+            );
+            $address->setTotalAmount(
+                'tax', $address->getTotalAmount('tax')
+                - ($item->getWeeeTaxAppliedRowAmount() - $item->getWeeeDiscount())
+            );
+        }
+
         if ($this->_getTaxDataHelper()->priceIncludesTax($item->getStoreId())) {
             $subTotal = $item->getRowTotalInclTax() - $item->getRowTax();
             $baseSubTotal = $item->getBaseRowTotalInclTax() - $item->getBaseRowTax();
