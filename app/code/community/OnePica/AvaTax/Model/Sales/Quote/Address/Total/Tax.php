@@ -591,7 +591,9 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
 
         if ($this->_getTaxDataHelper()->priceIncludesTax($item->getStoreId())) {
             $subTotal = $item->getRowTotalInclTax() - $item->getRowTax();
+            $subTotal+= ($item->getWeeeTaxAppliedRowAmount() - $item->getWeeeDiscount());
             $baseSubTotal = $item->getBaseRowTotalInclTax() - $item->getBaseRowTax();
+            $baseSubTotal+= $item->getBaseWeeeTaxAppliedRowAmount();
             $address->setTotalAmount('subtotal', $address->getTotalAmount('subtotal') + $subTotal);
             $address->setBaseTotalAmount('subtotal', $address->getBaseTotalAmount('subtotal') + $baseSubTotal);
         } else {
