@@ -33,6 +33,30 @@
                         </avatax16_onepage_validate_address_message>
                     </fields>
                 </avatax>
+                <weee>
+                    <fields>
+                        <display_list>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </display_list>
+                        <display>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </display>
+                        <discount>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </discount>
+                        <apply_vat>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </apply_vat>
+                    </fields>
+                </weee>
             </groups>
         </tax>
     </sections>

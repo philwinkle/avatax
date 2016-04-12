@@ -79,6 +79,11 @@
                     <data>OnePica_AvaTax_Helper_Tax_Data</data>
                 </rewrite>
             </tax>
+            <weee>
+                <rewrite>
+                    <data>OnePica_AvaTax_Model_Weee_Data</data>
+                </rewrite>
+            </weee>
         </helpers>
         <blocks>
             <avatax>
