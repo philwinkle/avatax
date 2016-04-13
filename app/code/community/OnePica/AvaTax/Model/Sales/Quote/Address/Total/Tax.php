@@ -53,6 +53,8 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
         $this->_setAddress($address);
         parent::collect($address);
 
+        $this->_resetItemsFPTValues($address);
+
         if (!$address->getPostcode()
             || ($address->getPostcode() && $address->getPostcode() == '-')
         ) {
@@ -337,6 +339,32 @@ class OnePica_AvaTax_Model_Sales_Quote_Address_Total_Tax extends Mage_Sales_Mode
 
             $this->_addAmount($gwPrintedCardTax);
             $this->_addBaseAmount($baseGwPrintedCardTax);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Reset items FPT values
+     *
+     * @param \Mage_Sales_Model_Quote_Address $address
+     * @return $this
+     */
+    protected function _resetItemsFPTValues(Mage_Sales_Model_Quote_Address $address)
+    {
+        /* @var $weeHelper Mage_Weee_Helper_Data */
+        $weeHelper = Mage::helper('weee');
+        /* @var $item Mage_Sales_Model_Quote_Item */
+        foreach ($address->getAllItems() as $item) {
+            $item->setWeeeTaxAppliedAmount(0);
+            $item->setBaseWeeeTaxAppliedAmount(0);
+            $item->setWeeeTaxAppliedRowAmount(0);
+            $item->setBaseWeeeTaxAppliedRowAmount(0);
+
+            $weeHelper->setApplied($item, array());
+
+            $item->setDiscountCalculationPrice(0);
+            $item->setBaseDiscountCalculationPrice(0);
         }
 
         return $this;

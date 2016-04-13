@@ -33,7 +33,7 @@ class OnePica_AvaTax_Model_Weee_Data extends Mage_Weee_Helper_Data
     public function getPriceDisplayType($store = null)
     {
         if ($this->_getDataHelper()->isAvatax16() && $this->_getDataHelper()->isServiceEnabled($store)) {
-            return Mage_Weee_Model_Tax::DISPLAY_INCL;
+            return Mage_Weee_Model_Tax::DISPLAY_EXCL;
         }
 
         return parent::getPriceDisplayType($store);
@@ -48,7 +48,7 @@ class OnePica_AvaTax_Model_Weee_Data extends Mage_Weee_Helper_Data
     public function getListPriceDisplayType($store = null)
     {
         if ($this->_getDataHelper()->isAvatax16() && $this->_getDataHelper()->isServiceEnabled($store)) {
-            return Mage_Weee_Model_Tax::DISPLAY_INCL;
+            return Mage_Weee_Model_Tax::DISPLAY_EXCL;
         }
 
         return parent::getListPriceDisplayType($store);
